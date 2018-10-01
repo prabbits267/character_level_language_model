@@ -19,8 +19,8 @@ class MyDataset(Dataset):
         x_data = list()
         y_data = list()
         for text in full_text.splitlines():
-            x_data.append('<BEGIN>' + text)
-            y_data.append(text + '<END>')
+            x_data.append('B' + text)
+            y_data.append(text + 'E')
         return x_data, y_data, full_text
 
 
