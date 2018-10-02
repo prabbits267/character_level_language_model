@@ -2,7 +2,7 @@ import pandas as pd
 import re
 
 FILE_PATH = 'trys.xlsx'
-FILE_NAME = 'data.txt'
+FILE_NAME = 'data_.txt'
 IS_APPEND = False
 
 def read_excel(path):
@@ -28,7 +28,7 @@ def write_file(file_name, full_text):
             file_writer.write(str(token) + '\n')
     file_writer.close()
 
-
+# read_excel(FILE_PATH)
 
 def process_file():
     full_text = open(FILE_NAME, 'rt', encoding='utf-8').read().splitlines()
@@ -75,26 +75,25 @@ def process_file():
         # text = re.sub('㎏', 'ｋg', text)
         # text = re.sub('\d*ｎ', '', text)
         # text = re.sub('^(\d*-\d*)$', '', text)
-        text = re.sub('\d+', '#', text)
-        text = re.sub('A', 'Ａ', text)
-        text = re.sub('B', 'Ｂ', text)
-        text = re.sub('F', 'Ｆ', text)
-        text = re.sub('L', 'Ｌ', text)
-        text = re.sub('N', 'Ｎ', text)
-        text = re.sub('Q', 'Ｑ', text)
-        text = re.sub('T', 'Ｔ', text)
-        text = re.sub('g', 'ｇ', text)
-        text = re.sub('r', 'ｒ', text)
-        text = re.sub('\)', '', text)
-        text = re.sub('\(', '', text)
-
-
+        # text = re.sub('\d+', '#', text)
+        # text = re.sub('A', 'Ａ', text)
+        # text = re.sub('B', 'Ｂ', text)
+        # text = re.sub('F', 'Ｆ', text)
+        # text = re.sub('L', 'Ｌ', text)
+        # text = re.sub('N', 'Ｎ', text)
+        # text = re.sub('Q', 'Ｑ', text)
+        # text = re.sub('T', 'Ｔ', text)
+        # text = re.sub('g', 'ｇ', text)
+        # text = re.sub('r', 'ｒ', text)
+        # text = re.sub('\)', '', text)
+        # text = re.sub('\(', '', text)
+        text = re.sub('一', 'ー', text)
 
         if len(text) > 2:
             token_list.append(text)
-    write_file(FILE_NAME, token_list)
+    write_file(FILE_NAME, set(sorted(token_list)))
 
-
+process_file()
 
 # def generate_suggest():
 #     file_reader = open(FILE_NAME, 'rt', encoding='utf-8')
@@ -111,4 +110,4 @@ def process_file():
 
 
 # generate_suggest()
-process_file()
+# process_file()
