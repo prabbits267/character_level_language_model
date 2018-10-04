@@ -8,6 +8,8 @@ from torch.nn import CrossEntropyLoss, NLLLoss
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 from torch.utils.data import DataLoader
 from my_dataset import *
+import re
+
 
 dataset = MyDataset(is_test=False)
 test_data = MyDataset(is_test=True)
@@ -17,9 +19,9 @@ full_text = dataset.text
 
 tokens = sorted(set(full_text))
 
-token_to_ind = {w:i for i,w in enumerate(tokens)}
-ind_to_token = {token_to_ind[w]:w for w in token_to_ind}
-print(ind_to_token[1])
+
+token_to_ind = {w: i for i, w in enumerate(tokens)}
+ind_to_token = {token_to_ind[w]: w for w in token_to_ind}
 P = 0
 
 vocab_size = len(tokens)
@@ -31,7 +33,7 @@ EMBED_SIZE = 200
 HIDDEN_SIZE = 64
 OUTPUT_SIZE = vocab_size
 NUM_LAYERS = 2
-NUM_EPOCH = 50
+NUM_EPOCH = 100
 LEARNING_RATE = 0.005
 
 num_interations = floor(data_size/BATCH_SIZE)
@@ -41,7 +43,8 @@ dataloader = DataLoader(dataset=dataset,
                         shuffle=True)
 
 test_loader = DataLoader(dataset=test_data,
-                         batch_size=24)
+                         batch_size=256)
+
 
 class LanguageModel(nn.Module):
     def __init__(self, hidden_size, output_size, embed_size, num_layers):
@@ -51,15 +54,16 @@ class LanguageModel(nn.Module):
             input_size=embed_size,
             hidden_size=hidden_size,
             num_layers=num_layers,
+            bidirectional=True,
             batch_first=True
         )
-        self.out = nn.Linear(hidden_size, output_size)
+        self.out = nn.Linear(hidden_size * 2, output_size)
         self.log_softmax = nn.LogSoftmax(dim=1)
 
     def forward(self, input, input_len):
         batch_size, seq_len, _ = input.size()
         packed_input = pack_padded_sequence(input, input_len, batch_first=True)
-        # self.lstm.flatten_parameters()
+        self.lstm.flatten_parameters()
         output, (hidden_state, cell_state) = self.lstm(packed_input)
         unpacked_output, _ = pad_packed_sequence(output, batch_first=True)
         unpacked_output = unpacked_output.contiguous()
@@ -70,7 +74,7 @@ class LanguageModel(nn.Module):
         out = out.view(batch_size, seq_len, vocab_size)
         return out
 
-    def create_variable(self,tensor):
+    def create_variable(self, tensor):
         return Variable(tensor.to(device))
 
     def sent_to_seq(self, input):
@@ -104,19 +108,129 @@ class LanguageModel(nn.Module):
         input_seq, input_len = self.pad_sequence(input)
         return input_seq, input_len
 
+    def generate_input(self, input):
+        input_seq, input_len = self.pad_sequence([input])
+        input_seq, input_len = self.create_variable(input_seq), self.create_variable(input_len)
+        embeds = self.embedding(input_seq)
+        return embeds, input_len
 
 
-lm = LanguageModel(HIDDEN_SIZE,OUTPUT_SIZE,EMBED_SIZE,NUM_LAYERS)
+lm = LanguageModel(HIDDEN_SIZE, OUTPUT_SIZE, EMBED_SIZE, NUM_LAYERS)
 print(lm)
 if use_cuda:
     lm = lm.to(device)
 loss_function = NLLLoss()
 optimizer = torch.optim.Adam(lm.parameters(), lr=LEARNING_RATE)
 
-lm = torch.load('model/language_model.mdl')
+# lm = torch.load('model/language_model.mdl')
 
+def get_result(input):
+    input_seq, input_len = lm.generate_input(input)
+    output = lm(input_seq, input_len)
+    output_index = torch.max(output, 2)[1]
+    output_index = output_index.cpu().numpy().tolist()
+    suggest_word = ''.join([ind_to_token[w] for w in output_index[0]])
+    return suggest_word
+
+
+def preprocess_word(text):
+    for token in list(text):
+        if token not in tokens:
+            text = re.sub(token, '', text)
+    text = re.sub('\d*\.\d*', '', text)
+    text = re.sub('\d*n|s\d*', '', text)
+    text = re.sub('♯|＃|#|,|', '', text)
+    text = re.sub('\d*Kg', '', text)
+    text = re.sub('\d*～\d*', '', text)
+    text = re.sub('\d{2}-\d{1}', '', text)
+    text = re.sub('1', '１', text)
+    text = re.sub('2', '２', text)
+    text = re.sub('3', '３', text)
+    text = re.sub('4', '４', text)
+    text = re.sub('5', '５', text)
+    text = re.sub('6', '６', text)
+    text = re.sub('7', '７', text)
+    text = re.sub('8', '８', text)
+    text = re.sub('9', '９', text)
+    text = re.sub('0', '０', text)
+    text = re.sub('R', 'Ｒ', text)
+    text = re.sub('H', 'Ｈ', text)
+    text = re.sub('P', 'Ｐ', text)
+    text = re.sub('X', 'Ｘ', text)
+    text = re.sub('S', 'Ｓ', text)
+    text = re.sub('C', 'Ｃ', text)
+    text = re.sub('M', 'Ｍ', text)
+    text = re.sub('k|K', 'ｋ', text)
+    text = re.sub('g|G', 'g', text)
+    text = re.sub('m', 'ｍ', text)
+    text = re.sub('=', '＝', text)
+    text = re.sub('＝\d+', '＝', text)
+    text = re.sub('Ｘ\d*', '', text)
+    text = re.sub('Ｙ\d*', '', text)
+    text = re.sub('\d*Ｓ|Ｎ', '', text)
+    text = re.sub('^\d+ｋg$', '', text)
+    text = re.sub('\*', '', text)
+    text = re.sub('Y\d*', '', text)
+    text = re.sub('X\d*', '', text)
+    text = re.sub('\d{3,}', '', text)
+    text = re.sub('\d{3,}', '', text)
+    text = re.sub('O', 'Ｏ', text)
+    text = re.sub('㎏', 'ｋg', text)
+    text = re.sub('\d*ｎ', '', text)
+    text = re.sub('^(\d*-\d*)$', '', text)
+    text = re.sub('\d+', '#', text)
+    text = re.sub('A', 'Ａ', text)
+    text = re.sub('B', 'Ｂ', text)
+    text = re.sub('F', 'Ｆ', text)
+    text = re.sub('L', 'Ｌ', text)
+    text = re.sub('N', 'Ｎ', text)
+    text = re.sub('Q', 'Ｑ', text)
+    text = re.sub('T', 'Ｔ', text)
+    text = re.sub('g', 'ｇ', text)
+    text = re.sub('r', 'ｒ', text)
+    text = re.sub('\)', '', text)
+    text = re.sub('\(', '', text)
+    text = re.sub('一', 'ー', text)
+    return text
+
+
+# print(get_result(preprocess_word('B巻き直し'))[:-1], ' real ', '巻き直し')
+# print(get_result(preprocess_word('Bガけラ付け'))[:-1], ' real ', 'ガラ片付け')
+# print(get_result(preprocess_word('Bペ塗キ塗り'))[:-1], ' real ', 'ペンキ塗り')
+# print(get_result(preprocess_word('B片付付'))[:-1], ' real ', '片付け')
+
+
+def calculate_perplexity(output_tensor, output_len):
+    total_log = 0
+    tensor_size = output_tensor.size(0)
+    for i, tensor in enumerate(output_tensor):
+        tensor = torch.exp(tensor)
+        # multiply all value in prob
+        p_si = tensor[:output_len[i]]
+        p_si = p_si.cpu().detach().numpy()
+        p_si = p_si.astype(dtype=float).prod()
+        log_si = math.log(p_si, 2)
+        total_log += log_si
+    total_log = - (total_log/tensor_size)
+    return math.pow(2, total_log)
+
+
+def evaluate():
+    max = -1
+    for i, (x_data, y_data) in enumerate(test_loader):
+        input_seq, input_len, target = lm.create_batch(x_data, y_data)
+        embeds = lm.embedding(input_seq)
+        output = lm(embeds, input_len)
+        a = torch.max(output, 2)
+        perplexity = calculate_perplexity(a[0], input_len)
+        if perplexity > max:
+            max = perplexity
+    return max
+
+# evaluate()
 
 def train():
+    min_perplexity = 1000
     for epoch in range(NUM_EPOCH):
         print('START EPOCH ----------------%d----------------' % (epoch))
         for i, (x_data, y_data) in enumerate(dataloader):
@@ -134,34 +248,16 @@ def train():
             optimizer.step()
 
             if i % 50 == 0:
-                print('Interation %d, loss: %.4f , [%d/%d] , Perplexity ' % (i, loss.item(), i * BATCH_SIZE, data_size))
+                print('Interation %d, loss: %.4f , [%d/%d] ' % (i, loss.item(), i * BATCH_SIZE, data_size))
+        perplexity = evaluate()
+        print('Perplexity : %.4f' % perplexity)
+        if perplexity < min_perplexity:
+            min_perplexity = perplexity
         torch.save(lm, 'model/language_model.mdl')
         print('__________________Model Saved__________________')
+
     torch.save(lm, 'model/language_model.mdl')
-
-# return list of probability
-def calculate_perplexity(output_tensor):
-    total_log = 0
-    tensor_size = output_tensor.size(0)
-    for tensor in output_tensor:
-        tensor = torch.exp(tensor)
-        # multiply all value in prob
-        p_si = tensor.cpu().detach().numpy().prod()
-        log_si = math.log(p_si, 2)
-        total_log += log_si
-        return torch.exp(tensor)
-    total_log = - (total_log /tensor_size)
-    return math.pow(2, total_log)
-
-
-for i, (x_data, y_data) in enumerate(test_loader):
-    input_seq, input_len, target = lm.create_batch(x_data, y_data)
-    embeds = lm.embedding(input_seq)
-    output = lm(embeds, input_len)
-    a = torch.max(output, 2)
-    print(calculate_perplexity(a[0]))
-
-
+# train()
 
 
 
