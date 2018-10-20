@@ -114,15 +114,12 @@ class LanguageModel(nn.Module):
         embeds = self.embedding(input_seq)
         return embeds, input_len
 
-
 lm = LanguageModel(HIDDEN_SIZE, OUTPUT_SIZE, EMBED_SIZE, NUM_LAYERS)
 print(lm)
 if use_cuda:
     lm = lm.to(device)
 loss_function = NLLLoss()
 optimizer = torch.optim.Adam(lm.parameters(), lr=LEARNING_RATE)
-
-# lm = torch.load('model/language_model.mdl')
 
 def get_result(input):
     input_seq, input_len = lm.generate_input(input)
@@ -131,74 +128,6 @@ def get_result(input):
     output_index = output_index.cpu().numpy().tolist()
     suggest_word = ''.join([ind_to_token[w] for w in output_index[0]])
     return suggest_word
-
-
-def preprocess_word(text):
-    for token in list(text):
-        if token not in tokens:
-            text = re.sub(token, '', text)
-    text = re.sub('\d*\.\d*', '', text)
-    text = re.sub('\d*n|s\d*', '', text)
-    text = re.sub('♯|＃|#|,|', '', text)
-    text = re.sub('\d*Kg', '', text)
-    text = re.sub('\d*～\d*', '', text)
-    text = re.sub('\d{2}-\d{1}', '', text)
-    text = re.sub('1', '１', text)
-    text = re.sub('2', '２', text)
-    text = re.sub('3', '３', text)
-    text = re.sub('4', '４', text)
-    text = re.sub('5', '５', text)
-    text = re.sub('6', '６', text)
-    text = re.sub('7', '７', text)
-    text = re.sub('8', '８', text)
-    text = re.sub('9', '９', text)
-    text = re.sub('0', '０', text)
-    text = re.sub('R', 'Ｒ', text)
-    text = re.sub('H', 'Ｈ', text)
-    text = re.sub('P', 'Ｐ', text)
-    text = re.sub('X', 'Ｘ', text)
-    text = re.sub('S', 'Ｓ', text)
-    text = re.sub('C', 'Ｃ', text)
-    text = re.sub('M', 'Ｍ', text)
-    text = re.sub('k|K', 'ｋ', text)
-    text = re.sub('g|G', 'g', text)
-    text = re.sub('m', 'ｍ', text)
-    text = re.sub('=', '＝', text)
-    text = re.sub('＝\d+', '＝', text)
-    text = re.sub('Ｘ\d*', '', text)
-    text = re.sub('Ｙ\d*', '', text)
-    text = re.sub('\d*Ｓ|Ｎ', '', text)
-    text = re.sub('^\d+ｋg$', '', text)
-    text = re.sub('\*', '', text)
-    text = re.sub('Y\d*', '', text)
-    text = re.sub('X\d*', '', text)
-    text = re.sub('\d{3,}', '', text)
-    text = re.sub('\d{3,}', '', text)
-    text = re.sub('O', 'Ｏ', text)
-    text = re.sub('㎏', 'ｋg', text)
-    text = re.sub('\d*ｎ', '', text)
-    text = re.sub('^(\d*-\d*)$', '', text)
-    text = re.sub('\d+', '#', text)
-    text = re.sub('A', 'Ａ', text)
-    text = re.sub('B', 'Ｂ', text)
-    text = re.sub('F', 'Ｆ', text)
-    text = re.sub('L', 'Ｌ', text)
-    text = re.sub('N', 'Ｎ', text)
-    text = re.sub('Q', 'Ｑ', text)
-    text = re.sub('T', 'Ｔ', text)
-    text = re.sub('g', 'ｇ', text)
-    text = re.sub('r', 'ｒ', text)
-    text = re.sub('\)', '', text)
-    text = re.sub('\(', '', text)
-    text = re.sub('一', 'ー', text)
-    return text
-
-
-# print(get_result(preprocess_word('B巻き直し'))[:-1], ' real ', '巻き直し')
-# print(get_result(preprocess_word('Bガけラ付け'))[:-1], ' real ', 'ガラ片付け')
-# print(get_result(preprocess_word('Bペ塗キ塗り'))[:-1], ' real ', 'ペンキ塗り')
-# print(get_result(preprocess_word('B片付付'))[:-1], ' real ', '片付け')
-
 
 def calculate_perplexity(output_tensor, output_len):
     total_log = 0
@@ -257,7 +186,6 @@ def train():
         print('__________________Model Saved__________________')
 
     torch.save(lm, 'model/language_model.mdl')
-# train()
 
 
 

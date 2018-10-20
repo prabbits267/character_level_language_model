@@ -34,6 +34,18 @@ class MyDataset(Dataset):
             return x_data[train_size:], y_data[train_size:], full_text
         return x_data[:train_size], y_data[:train_size], full_text
 
+    def read_data_txt(self):
+        with open('data_.txt', 'rt', encoding='utf-8') as file_reader:
+            full_text = file_reader.read()
+        list_text = full_text.splitlines()
+        x_data = list()
+        y_data = list()
+
+
+
+
+
+
 
 
 
